@@ -1,36 +1,55 @@
 import numpy as np
-from scipy.ndimage import gaussian_filter
 
-def degrade_low_contrast(img01,
-                         # --- contrast controls (main effect) ---
-                         gamma_c=1.15,          # 1.1–1.3 makes mids flatter (no huge darkening)
-                         dyn_range=0.65,        # 0.55–0.75 keeps a narrower range
-                         mid_shift=0.18,        # 0.10–0.25 recenters the range
-                         # --- noise controls (subtle) ---
-                         lam=1200,              # 800–2000 ⇒ very light Poisson noise
-                         sigma=0.002,           # 0.001–0.004 small Gaussian noise
-                         # --- optional mild blur ---
-                         blur_sigma=0.4):       # 0.3–0.6 slight smoothing
+def degrade_low_contrast(img01, strength: str = "medium") -> np.ndarray:
+    """
+    Simulate a low-contrast CT slice without adding synthetic noise.
 
-    x = np.clip(img01, 0, 1)
+    This function is designed to mimic the contrast reduction used in the
+    NGC-CLAHE paper for synthetic experiments:
+      - We work on the *windowed* image in [0,1].
+      - We shrink the dynamic range around the global mean (linear compression).
+      - We add a gentle gamma (>1) for a nonlinear 'flattening'.
+      - No salt-and-pepper or extra noise is added.
 
-    # 1) Contrast compression (dominant)
-    #    Flatten mid-tones and shrink dynamic range like the paper’s “low contrast reduction”.
-    x = x ** float(gamma_c)
-    x = mid_shift + dyn_range * x
-    x = np.clip(x, 0, 1)
+    Parameters
+    ----------
+    img01 : np.ndarray
+        Input image as float in [0,1]. This should be the output of
+        window_hu(...) or window_img01(...).
+    strength : {"mild", "medium", "strong"}, optional
+        Amount of contrast reduction:
+          * "mild"   – small flattening (closer to original)
+          * "medium" – default, similar to paper's examples
+          * "strong" – heavier contrast loss
 
-    # 2) Very light Poisson noise (high counts -> subtle noise)
-    if lam is not None and lam > 0:
-        counts = x * lam
-        x = np.random.poisson(counts).astype(np.float32) / float(lam)
+    Returns
+    -------
+    np.ndarray
+        Degraded image as float32 in [0,1].
+    """
+    # ensure float and clipped
+    x = np.clip(img01.astype(np.float32), 0.0, 1.0)
 
-    # 3) Tiny Gaussian noise
-    if sigma and sigma > 0:
-        x = x + np.random.normal(0.0, float(sigma), x.shape).astype(np.float32)
+    # choose parameters for each severity
+    if strength == "mild":
+        # slight shrink, tiny gamma
+        shrink_factor = 0.8
+        gamma = 1.10
+    elif strength == "strong":
+        # strong shrink, stronger gamma
+        shrink_factor = 0.4
+        gamma = 1.35
+    else:  # "medium"
+        shrink_factor = 0.6
+        gamma = 1.25
 
-    # 4) Optional slight blur (mimics mild reconstruction smoothing)
-    if blur_sigma and blur_sigma > 0:
-        x = gaussian_filter(x, float(blur_sigma))
+    # 1) linear dynamic-range compression around the mean
+    mu = float(x.mean())
+    y = (x - mu) * shrink_factor + mu
+    y = np.clip(y, 0.0, 1.0)
 
-    return np.clip(x, 0, 1)
+    # 2) gentle nonlinear compression (keeps look closer to paper)
+    y = np.power(y, gamma)
+    y = np.clip(y, 0.0, 1.0)
+
+    return y.astype(np.float32)
