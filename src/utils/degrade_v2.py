@@ -1,6 +1,6 @@
 import numpy as np
 
-def degrade_low_contrast(img01, strength: str = "strong") -> np.ndarray:
+def degrade_low_contrast(img01, strength: str = "medium") -> np.ndarray:
     """
     Simulate a low-contrast CT slice without adding synthetic noise.
 
@@ -37,8 +37,8 @@ def degrade_low_contrast(img01, strength: str = "strong") -> np.ndarray:
         gamma = 1.10
     elif strength == "strong":
         # strong shrink, stronger gamma
-        shrink_factor = 0.6
-        gamma = 1.25
+        shrink_factor = 0.4
+        gamma = 1.35
     else:  # "medium"
         shrink_factor = 0.6
         gamma = 1.25
@@ -46,10 +46,10 @@ def degrade_low_contrast(img01, strength: str = "strong") -> np.ndarray:
     # 1) linear dynamic-range compression around the mean
     mu = float(x.mean())
     y = (x - mu) * shrink_factor + mu
-    y = np.clip(y, 0.0, 1.00)
+    y = np.clip(y, 0.0, 1.0)
 
     # 2) gentle nonlinear compression (keeps look closer to paper)
     y = np.power(y, gamma)
-    y = np.clip(y, 0.0, 1.00)
+    y = np.clip(y, 0.0, 1.0)
 
     return y.astype(np.float32)

@@ -33,7 +33,7 @@ def main():
     )
     ap.add_argument(
         "--strength",
-        default="strong",
+        default="medium",
         choices=["mild", "medium", "strong"],
         help="amount of synthetic contrast reduction",
     )
