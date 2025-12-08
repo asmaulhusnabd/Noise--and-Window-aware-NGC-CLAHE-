@@ -19,7 +19,7 @@ from src.metrics.ssim_wrap import ssim01      # SSIM on [0,1]
 from src.metrics.fsim import fsim            # FSIM on [0,1]
 
 # --- loader for real image -> [0,1] with brain windowing (for metrics only) ---
-BRAIN_WL, BRAIN_WW = 40, 80  # use (50,130) for subdural if needed
+BRAIN_WL, BRAIN_WW = 40, 400  # use (50,130) for subdural if needed
 
 def load_real_windowed(path, wl=BRAIN_WL, ww=BRAIN_WW):
     p = Path(path)
@@ -108,13 +108,13 @@ def main():
     print(f"Slices with valid score entries: {len(scores)}")
 
     if not scores:
-        print("\n⚠️ No slices collected. Likely reasons:\n"
+        print("\nNo slices collected. Likely reasons:\n"
               "  - stems in data/real don't match data/synth / data/outputs\n"
               "  - *_ngcclahe.npy / *_proposed.npy / *_clahe.npy not generated for these stems\n")
         return
 
     scores.sort(key=lambda t: t[1], reverse=True)
-    top8 = scores[:15]
+    top8 = scores[:45]
 
     print("\nTop 8 slices by Δ(UIQI + SSIM + FSIM):")
     for stem, comb, d_u, d_s, d_f in top8:
@@ -142,7 +142,7 @@ def main():
         ax[0].imshow(synth, cmap='gray'); ax[0].set_title("Synthetic\n(low contrast)")
         ax[1].imshow(cla,   cmap='gray'); ax[1].set_title("CLAHE")
         ax[2].imshow(ngc,   cmap='gray'); ax[2].set_title("NGC-CLAHE")
-        ax[3].imshow(prop,  cmap='gray'); ax[3].set_title("Proposed\n(NW-GC-CLAHE)")
+        ax[3].imshow(prop,  cmap='gray'); ax[3].set_title("Proposed\n(NW-NGC-CLAHE)")
 
         for a in ax:
             a.axis('off')
